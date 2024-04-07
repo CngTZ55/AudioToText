@@ -1,9 +1,13 @@
 from transformers import AutoTokenizer, AutoModel, Wav2Vec2Processor, Wav2Vec2ForCTC
+import record_audio_if_talks
+import audioop
 
 import torch
 import pyaudio
 import numpy as np
 import typing
+import sounddevice as sd
+import time
 
 def loadModel(wav2vec2_model_name, device):
     "Load the given model."
@@ -11,8 +15,12 @@ def loadModel(wav2vec2_model_name, device):
     wav2vec2_model = Wav2Vec2ForCTC.from_pretrained(wav2vec2_model_name).to(device)
     return wav2vec2_model, wav2vec2_processor
 
-def recordAudio(time):
-    "Record the audio, during the given time."
+import sounddevice as sd
+import numpy as np
+
+# 
+def recordAudio():
+    "Record the audio, until silence is detected."
     try:
         # initialize pyaudio
         p = pyaudio.PyAudio()
@@ -20,12 +28,32 @@ def recordAudio(time):
         # open a new stream to record audio
         stream = p.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=1024)
 
-        # record n seconds of audio
-        print("Recording...")
+        # record audio until silence is detected
+        print("Waiting for speech...")
         frames = []
-        for _ in range(0, int(16000 / 1024 * time)):
+        silence_threshold = 1000  # adjust this value based on your microphone sensitivity
+        silence_count = 0
+        speech_detected = False
+
+        while True:
             data = stream.read(1024)
-            frames.append(data)
+            rms = audioop.rms(data, 2)  # get the volume
+
+            # if the volume is above the silence threshold, start recording
+            if rms > silence_threshold:
+                speech_detected = True
+                frames.append(data)
+                print("Recording...")
+            elif speech_detected:
+                # if the volume is below the silence threshold, increment the silence count
+                if rms < silence_threshold:
+                    silence_count += 1
+                else:
+                    silence_count = 0
+
+                # if silence is detected for a certain amount of time, stop recording
+                if silence_count > 100:  # adjust this value based on how long you want to wait before stopping the recording
+                    break
 
         print("Done recording")
 
@@ -46,6 +74,15 @@ def convertAudio(frames):
     speech = torch.from_numpy(audio.copy()).float()
 
     return speech
+# def convertAudio(frames):
+#     "Convert the audio in to a format that can be treated by the model"
+#     # convert the recorded audio to a numpy array
+#     audio = np.frombuffer(frames, dtype=np.int16)
+
+#     # convert the numpy array to a torch tensor
+#     speech = torch.from_numpy(audio.copy()).float()
+
+#     return speech
 
 def modelPrediction(speech, wav2vec2_processor, wav2vec2_model, device):
     "Using the given model for make predictions."
@@ -70,9 +107,9 @@ def modelPrediction(speech, wav2vec2_processor, wav2vec2_model, device):
 def textTranscriptionTxt(transcription):
     "Just save in a file all the info you want."
     with open("transcription.txt", "w") as f:
-        print("Empezando transcripcion...")
+        print("Writing...")
         f.write(transcription)
-        print("Transcripcion hecha.")
+        print("Writing success!.")
 
 def main():
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -91,8 +128,11 @@ def main():
 
     condition = True
     while condition:
-        frames = recordAudio(10)
+        frames = recordAudio()
+        # record_audio_if_talks.start_program(1, 10, 44100)
+        # frames = record_audio_if_talks.open_audio_stream()
         speech = convertAudio(frames)
+        print(speech)
 
         transcription = modelPrediction(speech, wav2vec2_processor, wav2vec2_model, device)
         print(f"Has dicho: {transcription}")
@@ -100,11 +140,11 @@ def main():
         textTranscriptionTxt(transcription)
 
         try:
-            option = int(input("¿Quiere volver a pasar voz a texto? Si=1, No=0."))
+            option = int(input("Do you want to transform audio to text again? Yes=1, No=0."))
             if option == 1:
-                print("Volviendo a grabar...")
+                print("Starting...")
             if option == 0:
-                print("Cerrando programa.")
+                print("Closing program.")
                 condition = False
 
         except Exception as e:
