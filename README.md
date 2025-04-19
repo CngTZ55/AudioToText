@@ -23,4 +23,5 @@ y pregunta si se desea volver a escuchar.
 ```pip -m venv env```
 
 ```env\Scripts\activate``` Para activar entorno y después si instalar las dependencias.
-3. Ejecutar el programa, y ¡Transcribir! 
+
+2. Ejecutar el programa, y ¡Transcribir!
