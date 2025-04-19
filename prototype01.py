@@ -4,9 +4,7 @@ import audioop
 import torch
 import pyaudio
 import numpy as np
-import typing
-import sounddevice as sd
-import time
+
 
 def loadModel(wav2vec2_model_name, device):
     "Load the given model."
