@@ -1,5 +1,4 @@
-from transformers import AutoTokenizer, AutoModel, Wav2Vec2Processor, Wav2Vec2ForCTC
-import record_audio_if_talks
+from transformers import Wav2Vec2Processor, Wav2Vec2ForCTC
 import audioop
 
 import torch
@@ -15,10 +14,6 @@ def loadModel(wav2vec2_model_name, device):
     wav2vec2_model = Wav2Vec2ForCTC.from_pretrained(wav2vec2_model_name).to(device)
     return wav2vec2_model, wav2vec2_processor
 
-import sounddevice as sd
-import numpy as np
-
-# 
 def recordAudio():
     "Record the audio, until silence is detected."
     try:
@@ -74,15 +69,6 @@ def convertAudio(frames):
     speech = torch.from_numpy(audio.copy()).float()
 
     return speech
-# def convertAudio(frames):
-#     "Convert the audio in to a format that can be treated by the model"
-#     # convert the recorded audio to a numpy array
-#     audio = np.frombuffer(frames, dtype=np.int16)
-
-#     # convert the numpy array to a torch tensor
-#     speech = torch.from_numpy(audio.copy()).float()
-
-#     return speech
 
 def modelPrediction(speech, wav2vec2_processor, wav2vec2_model, device):
     "Using the given model for make predictions."
@@ -119,18 +105,9 @@ def main():
     model = "jonatasgrosman/wav2vec2-large-xlsr-53-spanish"
     wav2vec2_model, wav2vec2_processor = loadModel(model, device)
 
-    #r = recordAudio(5)
-    #print(r)
-    #speech = convertAudio(r)
-    #print(speech)
-
-    #modelPrediction(speech, wav2vec2_processor, wav2vec2_model, device)
-
     condition = True
     while condition:
         frames = recordAudio()
-        # record_audio_if_talks.start_program(1, 10, 44100)
-        # frames = record_audio_if_talks.open_audio_stream()
         speech = convertAudio(frames)
         print(speech)
 
